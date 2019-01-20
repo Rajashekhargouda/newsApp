@@ -2,6 +2,8 @@ package com.capfloat.taskapp;
 
 import android.os.AsyncTask;
 
+import com.capfloat.taskapp.database.DatabaseHelper;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,6 +20,8 @@ public class FetchNewsTask extends AsyncTask<Void,Void,Integer> {
     private DatabaseHelper databaseHelper;
     private DataFetchListener dataFetchListener;
     private String serverUrl;
+    private int errorCode = 400;
+    private int successCode = 200;
 
     FetchNewsTask(DataFetchListener listener,DatabaseHelper databaseHelper, String serverUrl){
         this.databaseHelper = databaseHelper;
@@ -27,8 +31,7 @@ public class FetchNewsTask extends AsyncTask<Void,Void,Integer> {
 
     @Override
     protected Integer doInBackground(Void... voids) {
-        int errorCode = 400;
-        int successCode =200;
+
         try {
             URL url = new URL(serverUrl);
             HttpsURLConnection httpsURLConnection =  (HttpsURLConnection) url.openConnection();
@@ -39,19 +42,11 @@ public class FetchNewsTask extends AsyncTask<Void,Void,Integer> {
                 return errorCode;
 
             InputStream inputStream = httpsURLConnection.getInputStream();
-            StringBuilder stringBuilder = new StringBuilder();
             if (inputStream == null )
                 return errorCode;
 
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            /*while ((bufferedReader.readLine()) != null) {
-                stringBuilder.append(bufferedReader.readLine()).append("\n");
-            }*/
-          /*  if (stringBuilder.length() == 0){
-                return errorCode;
-            }*/
             return deserializeNewsData(bufferedReader.readLine(),databaseHelper);
-
         } catch (MalformedURLException e) {
             e.printStackTrace();
             return errorCode;
@@ -70,7 +65,7 @@ public class FetchNewsTask extends AsyncTask<Void,Void,Integer> {
     @Override
     protected void onPostExecute(Integer statusCode) {
         super.onPostExecute(statusCode);
-        if (statusCode == 200){
+        if (statusCode == successCode){
             dataFetchListener.onSuccess();
         }else {
             dataFetchListener.onError();
@@ -87,15 +82,16 @@ public class FetchNewsTask extends AsyncTask<Void,Void,Integer> {
                 JSONObject jsonObj = jsonArray.getJSONObject(i);
                 String title = jsonObj.getString("title");
                 String author = jsonObj.getString("author");
-                databaseHelper.insertData(author,title);
+                String description = jsonObj.getString("description");
+                databaseHelper.insertData(author,title,description);
             }
-            return 200;
+            return successCode;
         } catch (JSONException e) {
             e.printStackTrace();
-            return 400;
+            return errorCode;
         }catch (Exception e){
             e.printStackTrace();
-            return 400;
+            return errorCode;
         }
 
     }

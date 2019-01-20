@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TaskApp</string>
+    <string name="no_ineternet">No ineternet connection. Please make sure you are connected to internet</string>
 </resources>

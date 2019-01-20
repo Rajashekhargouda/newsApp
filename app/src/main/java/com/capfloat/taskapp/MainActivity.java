@@ -1,12 +1,18 @@
 package com.capfloat.taskapp;
 
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.capfloat.taskapp.Utils.NetworkManager;
+import com.capfloat.taskapp.database.DatabaseHelper;
+import com.capfloat.taskapp.model.NewsModel;
 
 import java.util.ArrayList;
 
@@ -16,7 +22,12 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
     DatabaseHelper databaseHelper;
     ProgressBar progressBar;
     RecyclerView recyclerView;
+    TextView txtInternet;
     ArrayList<NewsModel> newsModelArrayList;
+    int limit =10,offset =0;
+    boolean isLoading;
+    NewsListAdapter newsListAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,14 +40,20 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
     @Override
     protected void onResume() {
         super.onResume();
-        new FetchNewsTask(this,databaseHelper,url).execute();
+       if (NetworkManager.isNetworkConnected(this)){
+            new FetchNewsTask(this,databaseHelper,url).execute();
+        }
+        else {
+           txtInternet.setVisibility(View.VISIBLE);
 
+       }
     }
 
     private void init(){
         databaseHelper = new DatabaseHelper(this);
         progressBar = findViewById(R.id.progress_bar);
         recyclerView = findViewById(R.id.recycler_news);
+        txtInternet = findViewById(R.id.txt_no_internet);
     }
 
     @Override
@@ -57,13 +74,39 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
     }
 
     private void setUpRecyclerData(){
-        newsModelArrayList = databaseHelper.getPaginatedData(20,0);
-        NewsListAdapter newsListAdapter = new NewsListAdapter(this,newsModelArrayList);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(recyclerView.getContext(),
-                linearLayoutManager.getOrientation());
-        recyclerView.addItemDecoration(dividerItemDecoration);
+        newsModelArrayList = databaseHelper.getPaginatedData(limit,offset);
+        newsListAdapter = new NewsListAdapter(this,newsModelArrayList);
+        final LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(newsListAdapter);
+        recyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                int visibleItemCount = linearLayoutManager.getChildCount();
+                int totalItemCount = linearLayoutManager.getItemCount();
+                int firstVisibleItemPosition = linearLayoutManager.findFirstVisibleItemPosition();
+                if (!isLoading && totalItemCount < databaseHelper.getItemCount()) {
+                    if ((visibleItemCount + firstVisibleItemPosition) >=
+                            totalItemCount && firstVisibleItemPosition >= 0) {
+                        loadMoreItems(offset+=10);
+                    }
+                }
+            }
+        });
+    }
+
+    private void loadMoreItems(int offset){
+        newsListAdapter.shouldShowFooter =true;
+        isLoading =true;
+        newsModelArrayList.addAll(databaseHelper.getPaginatedData(10,offset));
+        newsListAdapter.notifyDataSetChanged();
+        isLoading =false;
+        newsListAdapter.shouldShowFooter = false;
     }
 }
