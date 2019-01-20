@@ -8,7 +8,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.capfloat.taskapp.Utils.NetworkManager;
 import com.capfloat.taskapp.database.DatabaseHelper;
@@ -22,7 +21,7 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
     DatabaseHelper databaseHelper;
     ProgressBar progressBar;
     RecyclerView recyclerView;
-    TextView txtInternet;
+    TextView txtError;
     ArrayList<NewsModel> newsModelArrayList;
     int limit =10,offset =0;
     boolean isLoading;
@@ -44,8 +43,11 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
             new FetchNewsTask(this,databaseHelper,url).execute();
         }
         else {
-           txtInternet.setVisibility(View.VISIBLE);
-
+           txtError.setVisibility(View.VISIBLE);
+           if (databaseHelper.getItemCount()>0) {
+               setUpRecyclerData();
+               txtError.setText(getString(R.string.offline_mode));
+           }else txtError.setText(getString(R.string.no_internet));
        }
     }
 
@@ -53,18 +55,23 @@ public class MainActivity extends AppCompatActivity implements DataFetchListener
         databaseHelper = new DatabaseHelper(this);
         progressBar = findViewById(R.id.progress_bar);
         recyclerView = findViewById(R.id.recycler_news);
-        txtInternet = findViewById(R.id.txt_no_internet);
+        txtError = findViewById(R.id.txt_no_internet);
     }
 
     @Override
     public void onSuccess() {
         progressBar.setVisibility(View.GONE);
+        txtError.setVisibility(View.GONE);
         setUpRecyclerData();
    }
 
     @Override
     public void onError() {
         progressBar.setVisibility(View.GONE);
+        txtError.setVisibility(View.VISIBLE);
+        txtError.setText(getString(R.string.something_went_wrong));
+
+
 
     }
 
